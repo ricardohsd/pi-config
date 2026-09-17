@@ -11,7 +11,8 @@ which pi-subagents injects into every spawned process.
 ### Main session (`PI_SUBAGENT_DEPTH` = 0 or unset) — interactive prompt
 
 - Heuristically detects destructive/questionable commands via shell-aware parsing
-- Prompts for **any** `git ...` command (escalates severity for especially risky ones: `git rm`,
+- Allows routine local git commands (`git status`, `git add`, `git commit`) without prompting
+- Prompts for other `git ...` commands (escalates severity for especially risky ones: `git rm`,
   `git reset --hard`, `git clean -fdx`, `git push --force`, `git reflog expire`, `git gc --prune`)
 - Prompts for disk/volume tooling: `diskutil`, `hdiutil`, `mkfs*`, `newfs_*`, `wipefs`, `parted`,
   `fdisk`, `gdisk/sgdisk`, `cryptsetup`, `pvcreate/vgcreate/lvcreate`, `zpool`, `lsblk`
@@ -46,7 +47,6 @@ a focused set of catastrophic/unrecoverable operations is hard-blocked with no u
 | `terraform destroy` | Infrastructure teardown |
 | `kubectl delete` | Kubernetes resource deletion |
 | `aws s3 rm --recursive` | Bulk S3 deletion |
-| `git commit` | Main-session operation |
 | `git pull` | Main-session operation |
 | `git push` | Main-session operation |
 | `git reset --hard` | Discard all uncommitted changes |
@@ -54,7 +54,7 @@ a focused set of catastrophic/unrecoverable operations is hard-blocked with no u
 | `git reflog expire` | Remove recovery history |
 | `git gc --prune` | Prune unreachable objects |
 
-All other commands (including routine git operations) pass through unaffected.
+All other commands (including `git status`, `git add`, `git commit`, and other routine git operations) pass through unaffected.
 
 ## Install
 

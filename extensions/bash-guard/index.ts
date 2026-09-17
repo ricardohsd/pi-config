@@ -84,12 +84,15 @@ function analyzeSegment(seg: Token[]): Risk | null {
 		reasons.push("find -delete (bulk deletion)");
 	}
 
-	// git operations (prompt on ANY git command)
+	// git operations. Routine local bookkeeping commands are allowed; prompt only for
+	// commands that can delete/overwrite data, move history, or affect remotes.
 	if (cmd === "git") {
 		const sub = rest[0];
 		const subArgs = rest.slice(1);
+		const safeSubcommands = new Set(["status", "add", "commit"]);
 
-		// Always prompt for git commands (user requested). Keep severity medium unless an explicit high-risk pattern is detected.
+		if (sub && safeSubcommands.has(sub)) return null;
+
 		reasons.push(sub ? `git ${sub} (git command)` : "git (git command)");
 
 		if (sub === "rm") {
@@ -383,7 +386,6 @@ const HEADLESS_BLOCKED: Array<{ pattern: RegExp; reason: string }> = [
 	{ pattern: /\bkubectl\s+delete\b/, reason: "Kubernetes resource deletion" },
 	{ pattern: /\baws\s+s3\s+rm\b[^#\n]*--recursive/, reason: "bulk S3 deletion (aws s3 rm --recursive)" },
 	// Destructive git operations
-	{ pattern: /\bgit\s+commit\b/, reason: "git commit (commits are main-session operations)" },
 	{ pattern: /\bgit\s+pull\b/, reason: "git pull (pulls are main-session operations)" },
 	{ pattern: /\bgit\s+push\b/, reason: "git push (pushes are main-session operations)" },
 	{ pattern: /\bgit\s+reset\b[^#\n]*--hard\b/, reason: "discard all uncommitted changes (git reset --hard)" },
@@ -400,7 +402,6 @@ const MAIN_DISABLED_BLOCKED: Array<{ pattern: RegExp; reason: string }> = HEADLE
 	({ pattern }) => {
 		const src = pattern.source;
 		return !(
-			src.includes("git\\s+commit") ||
 			src.includes("git\\s+pull") ||
 			// Keep `git push --force` blocked but allow plain `git push`.
 			src === "\\bgit\\s+push\\b"
