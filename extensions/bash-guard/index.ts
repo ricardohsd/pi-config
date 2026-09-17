@@ -422,12 +422,31 @@ const MAIN_DISABLED_BLOCKED: Array<{ pattern: RegExp; reason: string }> = HEADLE
 //   sanitizeStatusText collapses runs of ASCII spaces via / +/g.
 const BASH_GUARD_STATUS_KEY = " bash-guard";
 
+// Commands imported from the old block-dangerous-commands extension that should
+// never be run by agents. sudo/rm-rf are already handled by bash-guard's risk
+// model; package-manager system mutation is hard-blocked here in every mode.
+const ALWAYS_BLOCKED: Array<{ pattern: RegExp; reason: string }> = [
+	{ pattern: /\bapt-get\b/, reason: "apt-get (system package management)" },
+	{ pattern: /\bapt\b(?!-)/, reason: "apt (system package management)" },
+];
+
+function findAlwaysBlocked(command: string): { pattern: RegExp; reason: string } | undefined {
+	return ALWAYS_BLOCKED.find(({ pattern }) => pattern.test(command));
+}
+
 export default function (pi: ExtensionAPI) {
 	if (_isSubagent) {
 		// Subagent mode: hard-block catastrophic operations, no prompting.
 		pi.on("tool_call", async (event) => {
 			if (!isToolCallEventType("bash", event)) return;
 			const command = event.input.command;
+			const alwaysBlocked = findAlwaysBlocked(command);
+			if (alwaysBlocked) {
+				return {
+					block: true,
+					reason: `Blocked by bash-guard: ${alwaysBlocked.reason} is not allowed.`,
+				};
+			}
 			for (const { pattern, reason } of HEADLESS_BLOCKED) {
 				if (pattern.test(command)) {
 					return {
@@ -501,6 +520,14 @@ export default function (pi: ExtensionAPI) {
 		if (!isToolCallEventType("bash", event)) return;
 
 		const command = event.input.command;
+
+		const alwaysBlocked = findAlwaysBlocked(command);
+		if (alwaysBlocked) {
+			return {
+				block: true,
+				reason: `Blocked by bash-guard: ${alwaysBlocked.reason} is not allowed.`,
+			};
+		}
 
 		// Disabled (autonomous) mode: skip interactive prompting entirely, but keep
 		// a hard-block floor for catastrophic operations.

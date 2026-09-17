@@ -15,6 +15,7 @@ which pi-subagents injects into every spawned process.
   `git reset --hard`, `git clean -fdx`, `git push --force`, `git reflog expire`, `git gc --prune`)
 - Prompts for disk/volume tooling: `diskutil`, `hdiutil`, `mkfs*`, `newfs_*`, `wipefs`, `parted`,
   `fdisk`, `gdisk/sgdisk`, `cryptsetup`, `pvcreate/vgcreate/lvcreate`, `zpool`, `lsblk`
+- Hard-blocks `apt` and `apt-get` in every mode (system package mutation)
 - Prompts for: `rm`/`rmdir`/`unlink`, `sudo`, `find -delete`, `dd`, `truncate`, `sed -i`,
   `perl -pi`, `chmod/chown -R`, `mv/cp --force`, `kill`/`pkill`/`killall`, `shutdown`/`reboot`,
   `systemctl stop/disable`, `curl|sh`/`wget|sh`, `kubectl delete`, `terraform destroy`,
@@ -31,6 +32,7 @@ a focused set of catastrophic/unrecoverable operations is hard-blocked with no u
 | Pattern | Reason |
 |---|---|
 | `rm -r` / `-rf` / `-Rf` | Recursive deletion |
+| `apt`, `apt-get` | System package management |
 | `sudo` | Elevated privileges |
 | `curl\|sh`, `wget\|sh` | Pipe to shell (remote code execution) |
 | `mkfs*`, `newfs_*` | Filesystem formatting |
