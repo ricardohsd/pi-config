@@ -17,6 +17,8 @@ Some ideas and extension patterns were inspired by [amosblomqvist/pi-config](htt
 ### Skills
 
 - `skills/herdr/` — instructions for controlling [Herdr](https://github.com/ricardohsd/herdr), a terminal multiplexer for coding agents, when the user explicitly asks to use Herdr.
+- `skills/radioactive/` — a full-cycle 10-phase development lifecycle workflow with discovery, planning, execution, testing, review, fix loops, blueprint updates, and changelog generation. Inspired by [devton/agentic-workflow-blueprint](https://github.com/devton/agentic-workflow-blueprint).
+- `skills/mattpocock/wayfinder/` — a strategic orientation workflow for codebase mapping, architectural entry point identification, and problem-space framing before deeper research or implementation.
 
 ## Copy an extension
 
@@ -41,13 +43,16 @@ npm install
 
 Then restart pi or run `/reload`.
 
-## Copy a skill
+## Link skills
+
+Instead of copying skills one by one, symlink this repo's skill directories into your pi config:
 
 ```bash
-cp -r skills/herdr ~/.pi/agent/skills/
+mkdir -p ~/.pi/agent/skills
+ln -s /path/to/pi-config-repo/skills/* ~/.pi/agent/skills/
 ```
 
-Then restart pi or run `/reload`.
+Replace `/path/to/pi-config-repo/skills` with the path to this repo's `skills` directory. Then restart pi or run `/reload`.
 
 ## Do not clone over your config
 
@@ -67,4 +72,5 @@ npm install
 ## Notes
 
 - `bash-guard` only intercepts agent-issued `bash` tool calls. It does not intercept `write`, `edit`, or manual shell commands.
+- `bash-guard` allows routine local git commands like `git status`, `git add`, and `git commit`, while still prompting or blocking risky operations.
 - The Herdr skill should only be used from inside a Herdr-managed pane and only when the user explicitly asks for Herdr.
