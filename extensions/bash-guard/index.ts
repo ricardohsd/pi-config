@@ -281,17 +281,23 @@ function analyzeBashCommand(command: string): Risk | null {
 	const reasons: string[] = [];
 	let severity: Severity = "medium";
 
-	// Whole-command operator checks
+	// Whole-command operator checks. Pipes are not risky by themselves (e.g.
+	// `find ... | sort`); segment analysis below still catches dangerous commands
+	// in a pipeline and explicit pipe-to-shell patterns. Similarly, stderr/stdout
+	// redirection to /dev/null is treated as benign noise suppression.
 	const ops = tokens.filter(isOpToken).map((t) => t.op);
-	if (ops.some((op) => op === ">" || op === ">>" || op === "2>" || op === "2>>")) {
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i];
+		if (!isOpToken(token) || (token.op !== ">" && token.op !== ">>" && token.op !== "2>" && token.op !== "2>>")) continue;
+
+		const target = tokens[i + 1];
+		if (target === "/dev/null") continue;
+
 		reasons.push("shell output redirection (can overwrite files)");
 		severity = severity === "high" ? "high" : "medium";
 	}
 	if (ops.includes("<")) {
 		reasons.push("shell input redirection (questionable)");
-	}
-	if (ops.includes("|")) {
-		reasons.push("pipe operator (chained commands)");
 	}
 
 	// Segment analysis (split on &&, ||, ;)

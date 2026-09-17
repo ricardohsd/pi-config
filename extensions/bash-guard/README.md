@@ -20,7 +20,8 @@ which pi-subagents injects into every spawned process.
 - Prompts for: `rm`/`rmdir`/`unlink`, `sudo`, `find -delete`, `dd`, `truncate`, `sed -i`,
   `perl -pi`, `chmod/chown -R`, `mv/cp --force`, `kill`/`pkill`/`killall`, `shutdown`/`reboot`,
   `systemctl stop/disable`, `curl|sh`/`wget|sh`, `kubectl delete`, `terraform destroy`,
-  `aws s3 rm --recursive`, `gcloud delete`, shell redirections (`>`, `>>`, `2>`), pipes
+  `aws s3 rm --recursive`, `gcloud delete`, shell output redirections to files (`>`, `>>`, `2>`)
+- Allows benign read-only pipelines such as `find ... | sort` and output redirection to `/dev/null`
 - Shows a 2-option dialog: **Run** / **Abort**
 - If aborted, the tool call is blocked and the model receives a clear reason
 - Remembers recently aborted commands for 60 s to prevent retry loops
