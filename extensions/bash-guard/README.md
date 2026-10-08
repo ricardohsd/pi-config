@@ -11,18 +11,26 @@ which pi-subagents injects into every spawned process.
 ### Main session (`PI_SUBAGENT_DEPTH` = 0 or unset) — interactive prompt
 
 - Heuristically detects destructive/questionable commands via shell-aware parsing
-- Allows routine local git commands (`git status`, `git add`, `git commit`) without prompting
-- Prompts for other `git ...` commands (escalates severity for especially risky ones: `git rm`,
-  `git reset --hard`, `git clean -fdx`, `git push --force`, `git reflog expire`, `git gc --prune`)
-- Prompts for disk/volume tooling: `diskutil`, `hdiutil`, `mkfs*`, `newfs_*`, `wipefs`, `parted`,
-  `fdisk`, `gdisk/sgdisk`, `cryptsetup`, `pvcreate/vgcreate/lvcreate`, `zpool`, `lsblk`
+- Allows routine Git commands by default, including `status`, `diff`, `log`, `show`, `fetch`,
+  normal `push`, `switch`, `branch`, and invocations using global options such as `git -C repo status`
+- Prompts only for explicitly destructive Git forms: `git rm`, `git reset --hard`, forced
+  `git clean`, path-overwriting `checkout`/`restore`, force-push, `branch -D`, `reflog expire`,
+  and `gc --prune`
+- Prompts for destructive disk/volume tooling: disk-erasing `diskutil` operations, `mkfs*`,
+  `newfs_*`, `wipefs`, `parted`, `fdisk`, `gdisk/sgdisk`, `cryptsetup`,
+  `pvcreate/vgcreate/lvcreate`, and `zpool`; read-only listing and ordinary disk-image creation pass
 - Hard-blocks `apt` and `apt-get` in every mode (system package mutation)
-- Prompts for: `rm`/`rmdir`/`unlink`, `sudo`, `find -delete`, `dd`, `truncate`, `sed -i`,
-  `perl -pi`, `chmod/chown -R`, `mv/cp --force`, `kill`/`pkill`/`killall`, `shutdown`/`reboot`,
-  `systemctl stop/disable`, `curl|sh`/`wget|sh`, `kubectl delete`, `terraform destroy`,
-  `aws s3 rm --recursive`, `gcloud delete`, shell output redirections to files (`>`, `>>`, `2>`)
-- Allows benign read-only pipelines such as `find ... | sort` and output redirection to `/dev/null`
-- Shows a 2-option dialog: **Run** / **Abort**
+- Allows simple single-target deletion such as `rm file.tmp`, `rm -f build.log`, and deletion
+  beneath temporary directories; prompts for recursive deletion, globs, multiple targets, path
+  traversal, protected paths, and non-temporary absolute paths
+- Prompts for: `sudo`, `find -delete`, `dd` outputs, `truncate`, `sed -i`, `perl -pi`,
+  `chmod/chown -R`, `mv/cp --force`, process termination, system power/service disruption,
+  destructive disk tools, and infrastructure deletion
+- Allows ordinary input/output redirection; prompts when output targets devices, `.git`, parent
+  paths, sensitive home configuration, or non-temporary absolute paths
+- Allows benign pipelines such as `find ... | sort` and detects remote execution only when
+  `curl`/`wget` feeds a shell directly; `bash script.sh | grep warning` is allowed
+- Shows a 3-option dialog: **Run once** / **Allow for session** / **Abort**
 - If aborted, the tool call is blocked and the model receives a clear reason
 - Remembers recently aborted commands for 60 s to prevent retry loops
 
@@ -60,6 +68,15 @@ All other commands (including `git status`, `git add`, `git commit`, and other r
 ## Install
 
 Auto-discovered from `~/.pi/agent/extensions/bash-guard/`. Run `/reload` in pi.
+
+## Test
+
+```bash
+npm test
+```
+
+The regression suite contains representative safe and dangerous Git, deletion, redirection, and
+pipeline commands. Add every reported false positive to this table before changing the classifier.
 
 ## Notes
 

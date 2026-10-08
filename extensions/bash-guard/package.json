@@ -2,6 +2,9 @@
   "name": "pi-bash-guard",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "node --test --experimental-strip-types policy.test.ts"
+  },
   "dependencies": {
     "shell-quote": "^1.8.3"
   },

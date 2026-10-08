@@ -3,6 +3,7 @@ import { DynamicBorder, isToolCallEventType } from "@mariozechner/pi-coding-agen
 import type { SelectItem } from "@mariozechner/pi-tui";
 import { Container, SelectList, Text } from "@mariozechner/pi-tui";
 import { parse as shellParse } from "shell-quote";
+import { analyzeBashCommand as analyzeCommandPolicy, findDisabledGitRisk, findHeadlessGitRisk } from "./policy.ts";
 
 type Severity = "high" | "medium";
 
@@ -315,7 +316,7 @@ function analyzeBashCommand(command: string): Risk | null {
 	return { severity, reasons: uniq };
 }
 
-async function promptRunOrAbort(ctx: any, command: string, risk: Risk): Promise<"run" | "abort"> {
+async function promptRunOrAbort(ctx: any, command: string, risk: Risk): Promise<"run" | "allow-session" | "abort"> {
 	if (!ctx.hasUI) return "abort";
 
 	const reasonsText = risk.reasons.map((r) => `• ${r}`).join("\n");
@@ -323,11 +324,12 @@ async function promptRunOrAbort(ctx: any, command: string, risk: Risk): Promise<
 	const body = `${header}\n\n${reasonsText}\n\nCommand:\n${command}`;
 
 	const items: SelectItem[] = [
-		{ value: "run", label: "Run", description: "Execute the command" },
+		{ value: "run", label: "Run once", description: "Execute this command once" },
+		{ value: "allow-session", label: "Allow for session", description: "Allow this exact command until Pi exits or reloads" },
 		{ value: "abort", label: "Abort", description: "Block this command" },
 	];
 
-	const choice = await ctx.ui.custom<"run" | "abort">((tui, theme, _kb, done) => {
+	const choice = await ctx.ui.custom<"run" | "allow-session" | "abort">((tui, theme, _kb, done) => {
 		const container = new Container();
 		container.addChild(new DynamicBorder((s: string) => theme.fg("warning", s)));
 		container.addChild(new Text(theme.fg("warning", theme.bold("Potentially destructive bash command")), 1, 0));
@@ -341,7 +343,7 @@ async function promptRunOrAbort(ctx: any, command: string, risk: Risk): Promise<
 			noMatch: (t) => theme.fg("warning", t),
 		});
 
-		list.onSelect = (item) => done(item.value as "run" | "abort");
+		list.onSelect = (item) => done(item.value as "run" | "allow-session" | "abort");
 		list.onCancel = () => done("abort");
 		container.addChild(list);
 
@@ -454,6 +456,13 @@ export default function (pi: ExtensionAPI) {
 					reason: `Blocked by bash-guard: ${alwaysBlocked.reason} is not allowed.`,
 				};
 			}
+			const gitRisk = findHeadlessGitRisk(command);
+			if (gitRisk) {
+				return {
+					block: true,
+					reason: `Blocked by bash-guard: ${gitRisk}. This is a non-interactive subagent session.`,
+				};
+			}
 			for (const { pattern, reason } of HEADLESS_BLOCKED) {
 				if (pattern.test(command)) {
 					return {
@@ -521,6 +530,7 @@ export default function (pi: ExtensionAPI) {
 
 	// Avoid annoying retry loops: if the exact command was aborted recently, auto-block it.
 	const recentlyAborted = new Map<string, number>();
+	const sessionAllowed = new Set<string>();
 	const ABORT_REMEMBER_MS = 60_000;
 
 	pi.on("tool_call", async (event, ctx) => {
@@ -539,6 +549,13 @@ export default function (pi: ExtensionAPI) {
 		// Disabled (autonomous) mode: skip interactive prompting entirely, but keep
 		// a hard-block floor for catastrophic operations.
 		if (disabled) {
+			const gitRisk = findDisabledGitRisk(command);
+			if (gitRisk) {
+				return {
+					block: true,
+					reason: `Blocked by bash-guard (disabled-mode floor): ${gitRisk}.`,
+				};
+			}
 			for (const { pattern, reason } of MAIN_DISABLED_BLOCKED) {
 				if (pattern.test(command)) {
 					return {
@@ -553,7 +570,9 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 
-		const risk = analyzeBashCommand(command);
+		if (sessionAllowed.has(command)) return;
+
+		const risk = analyzeCommandPolicy(command);
 		if (!risk) return;
 
 		const now = Date.now();
@@ -573,6 +592,10 @@ export default function (pi: ExtensionAPI) {
 
 		const choice = await promptRunOrAbort(ctx, command, risk);
 		if (choice === "run") return;
+		if (choice === "allow-session") {
+			sessionAllowed.add(command);
+			return;
+		}
 
 		recentlyAborted.set(command, now);
 		return {
