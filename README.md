@@ -1,6 +1,6 @@
 # pi-config
 
-My personal [pi](https://github.com/earendil-works/pi) configuration: a small collection of extensions and skills I use with the pi coding agent.
+My personal [pi](https://github.com/earendil-works/pi) configuration: a small collection of extensions, skills, and subagent profiles I use with the pi coding agent.
 
 This repo is meant to be browsed and copied from, not installed wholesale. Pick the pieces you want and copy them into your own `~/.pi/agent` config.
 
@@ -17,8 +17,19 @@ Some ideas and extension patterns were inspired by [amosblomqvist/pi-config](htt
 ### Skills
 
 - `skills/herdr/` — instructions for controlling [Herdr](https://github.com/ricardohsd/herdr), a terminal multiplexer for coding agents, when the user explicitly asks to use Herdr.
+- `skills/how/` — explains subsystem architecture and runtime flow using parallel read-only exploration when needed.
+- `skills/why/` — investigates design rationale across source history and available MCP evidence, then produces a confidence-calibrated synthesis.
 - `skills/radioactive/` — a full-cycle 10-phase development lifecycle workflow with discovery, planning, execution, testing, review, fix loops, blueprint updates, and changelog generation. Inspired by [devton/agentic-workflow-blueprint](https://github.com/devton/agentic-workflow-blueprint).
 - `skills/mattpocock/wayfinder/` — a strategic orientation workflow for codebase mapping, architectural entry point identification, and problem-space framing before deeper research or implementation.
+
+See [`skills/README.md`](skills/README.md) for the complete list and origins.
+
+### Subagent profiles
+
+The profiles in `agents/` support the `how` and `why` skills through [pi-interactive-subagents](https://github.com/ricardohsd/pi-interactive-subagents):
+
+- `how-explorer` and `how-explainer` — read-only code exploration and architectural synthesis.
+- `why-investigator` and `why-synthesizer` — read-only-oriented evidence gathering and rationale synthesis with Pi MCP access.
 
 ## Copy an extension
 
@@ -53,6 +64,17 @@ ln -s /path/to/pi-config-repo/skills/* ~/.pi/agent/skills/
 ```
 
 Replace `/path/to/pi-config-repo/skills` with the path to this repo's `skills` directory. Then restart pi or run `/reload`.
+
+## Link subagent profiles
+
+The `how` and `why` skills require the profiles in `agents/` and the [pi-interactive-subagents](https://github.com/ricardohsd/pi-interactive-subagents) package. Symlink the profiles into your global agent directory:
+
+```bash
+mkdir -p ~/.pi/agent/agents
+ln -s /path/to/pi-config-repo/agents/*.md ~/.pi/agent/agents/
+```
+
+The profiles omit a `model` field so child sessions inherit Pi's configured default model. Restart pi or run `/reload` after installing them.
 
 ## Do not clone over your config
 

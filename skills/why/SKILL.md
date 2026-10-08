@@ -10,7 +10,9 @@ Investigate the motivation and intent behind code.
 
 Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.
 
-Each spawn below names a role line in the `pstack-models.mdc` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
+Use Pi's `subagent` tool for all delegation. The named agent profile controls its model and tool access; do not pass a `model` override unless the user explicitly requests one.
+
+Subagent calls are asynchronous. Give every spawn a unique, descriptive `name`, dispatch independent calls in the same turn, and then stop or continue unrelated work. Results arrive automatically as steer messages. Never poll with `subagents_list`, shell loops, sleeps, pane inspection, or session files. Before synthesis, ensure that results have arrived from every expected investigator name. Use `subagents_list` only when you need to confirm that the required profiles are installed.
 
 ## Operating Posture
 
@@ -20,7 +22,7 @@ Operate as a **careful, cautious, and precise investigator**. Be honest about wh
 
 Parse what the user is asking. The **target** is usually a chunk of code, a pattern, a feature, or a named design decision. The **question** is usually a design rationale, a tradeoff, a motivating edge case, an external constraint, dead code, or a broad history sweep.
 
-If the target is vague ("why do we do it this way?" with no clear referent), make your best guess from conversation context (open files, recent edits, cursor location, what was just discussed). State your interpretation briefly so the user can redirect if you're off, then proceed.
+If the target is vague ("why do we do it this way?" with no clear referent), make your best guess from available conversation context, such as files already discussed, recent edits, or the immediately preceding request. State your interpretation briefly so the user can redirect if you're off, then proceed.
 
 ## Step 2. Establish the Code Anchor
 
@@ -61,7 +63,14 @@ Capture this as seed context (file paths, symbols, commits, PR numbers, linked t
 
 ### Discovery
 
-Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.
+Before spawning investigators, discover MCP coverage from Pi's current environment:
+
+1. Inspect the `mcp_servers` section in Pi's system context.
+2. When necessary, run `pi mcp list` to inspect configured server names, connection state, and tools.
+3. Account for direct MCP tools, deferred tools reached through `tool_search`, and codemode MCP namespaces.
+4. Treat unavailable, disconnected, unauthenticated, or hidden servers as explicit coverage gaps.
+
+`subagents_list` lists agent profiles, not MCP servers, and must not be used for MCP discovery.
 
 Map each available MCP to one evidence category:
 
@@ -73,16 +82,18 @@ Map each available MCP to one evidence category:
 6. Error / exception tracking
 7. Product analytics warehouse
 
-Source control is always available through git and `gh`. For the other six, classify using the MCP name, server instructions, tool names, and resource descriptors. If an MCP could fit more than one category, choose the one matching its primary evidence. Record ambiguous cases in the coverage map.
+Local source control is expected to be available through git. GitHub PR data additionally requires an installed and authenticated `gh` CLI; record its absence as a coverage gap. For the other six categories, classify available MCPs using the server name, instructions, tool names, and resource descriptors. If an MCP could fit more than one category, choose the one matching its primary evidence. Record ambiguous cases in the coverage map.
 
 Aim for a complete **coverage map**, not a minimal one. Document the null, don't skip the search.
 
-Launch all matching investigators in a single message so they run concurrently. Don't ask one agent to cover multiple MCPs.
+Launch all matching investigators in the same turn so they run concurrently. Don't ask one agent to cover multiple MCPs.
 
 Subagent config (each):
-- `subagent_type`: `generalPurpose`
-- `model`: the `why investigators` line, default `grok-4.7-xhigh-fast`
-- `readonly`: `false` (agent mode). **Do not use readonly/Ask mode.** It strips MCP access, which disables MCP-backed investigators entirely. Investigators still shouldn't write anything.
+- `agent`: `why-investigator`
+- `name`: a unique category handle such as `why-source-control`, `why-linear`, `why-notion`, or `why-sentry`
+- `task`: the complete investigator prompt described below
+
+The profile supplies read-only-oriented local tools while preserving Pi's built-in, file-configured MCP access. Pi keeps MCP tools available under a non-MCP `--tools` allowlist; however, MCP servers registered only by another extension may not propagate into the restricted child process. Treat that as a coverage gap unless the backing extension is explicitly registered with pi-interactive-subagents. Explicitly instruct every investigator not to modify files or external state and to use only its assigned evidence category. After dispatching, end the current turn rather than polling. Start synthesis only after every expected named result has been delivered automatically.
 
 Each investigator gets:
 1. The base prompt from `references/investigator-prompt.md`
@@ -97,7 +108,7 @@ Spawn one investigator per category that has a matching MCP. Each owns exactly o
 
 Each entry names the category and the kind of "why" it uniquely surfaces. Use it to know what to expect back, how to name a gap when a category returns empty, and (only in the rare provably-irrelevant case) to justify a skip.
 
-1. **Source control investigator**. Git history, `gh` for PRs, code comments, tests. Always spawn. The only guaranteed source. Best at surfacing *implementation-time rationale captured during review*.
+1. **Source control investigator**. Local git history, `gh` for PRs when installed and authenticated, code comments, tests. Always spawn. Local git is expected; GitHub PR access is not guaranteed and must be reported as a gap when unavailable. Best at surfacing *implementation-time rationale captured during review*.
 
 2. **Issue / ticket tracker investigator** (e.g. Linear, Jira, GitHub Issues, Plane, Shortcut MCP). Best at surfacing *the product or business forcing function*. Strongest when the why is external to engineering.
 
@@ -122,11 +133,13 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 
 ## Step 4. Synthesize
 
-Spawn one synthesizer subagent:
+After every expected investigator result has arrived, spawn one synthesizer subagent:
 
-- `subagent_type`: `generalPurpose`
-- `model`: the `why synthesizer` line, default `claude-opus-5-5-xhigh`
-- `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly/Ask mode strips MCPs and defeats that.
+- `agent`: `why-synthesizer`
+- `name`: a unique handle such as `why-synthesizer`
+- `task`: the complete synthesizer prompt described below
+
+The profile supplies read-only-oriented local tools while preserving Pi's built-in, file-configured MCP access for citation spot-checking. End the current turn rather than polling, and continue only after its result is delivered automatically. Do not reuse a prior run's name unless you intentionally want `subagent_message` to resume that subagent's existing session.
 
 The synthesizer gets:
 1. The investigator findings, including any null results and any categories skipped with justification

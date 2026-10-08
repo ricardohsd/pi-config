@@ -8,7 +8,9 @@ disable-model-invocation: true
 
 Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
 
-Each spawn below names a role line in the `pstack-models.mdc` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
+Use Pi's `subagent` tool for all delegation. The named agent profile controls its model and tool access; do not pass a `model` override unless the user explicitly requests one.
+
+Subagent calls are asynchronous. Give every spawn a unique, descriptive `name`, dispatch independent calls in the same turn, and then stop or continue unrelated work. Results arrive automatically as steer messages. Never poll with `subagents_list`, shell loops, sleeps, pane inspection, or session files. Before synthesis, ensure that results have arrived from every expected explorer name. Use `subagents_list` only when you need to confirm that the required profiles are installed.
 
 ## Step 1. Assess Complexity
 
@@ -21,33 +23,33 @@ When in doubt, take the simple path.
 
 ## Step 2a. Explore (complex questions only)
 
-Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message:
+Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in the same turn so they run concurrently:
 
-- `subagent_type`: `generalPurpose`
-- `model`: the `how explorer` line, default `grok-4.7-xhigh-fast`
-- `readonly`: `true`
+- `agent`: `how-explorer`
+- `name`: a unique descriptive handle such as `how-entrypoints`, `how-data-flow`, or `how-boundaries`
+- `task`: the complete prompt from `references/explorer-prompt.md` with the question and exploration angle filled in
 
-Each explorer gets the prompt in `references/explorer-prompt.md` with its angle filled in. Then go to Step 3.
+Do not pass `readonly`; read-only access is enforced by the `how-explorer` profile. After dispatching the explorers, end the current turn rather than polling. Continue to Step 3 only after every named result has been delivered automatically.
 
 ## Step 2b. Direct Explain (simple questions)
 
-Spawn one Task subagent that explores and explains in one pass:
+Spawn one Pi subagent that explores and explains in one pass:
 
-- `subagent_type`: `generalPurpose`
-- `model`: the `how explainer` line, default `claude-opus-5-5-xhigh`
-- `readonly`: `true`
+- `agent`: `how-explainer`
+- `name`: a unique handle such as `how-direct-explainer`
+- `task`: the complete prompt from `references/explainer-prompt.md` without the explorer-findings section
 
-Build its prompt from `references/explainer-prompt.md` without the explorer-findings section. Go to Step 4.
+Do not pass `readonly`; read-only access is enforced by the `how-explainer` profile. End the current turn and continue to Step 4 only after its result is delivered automatically.
 
 ## Step 3. Synthesize (complex questions only)
 
-Once all explorers have returned, spawn one Task subagent to synthesize their findings into one explanation:
+Once every named explorer has returned, spawn one Pi subagent to synthesize their findings into one explanation:
 
-- `subagent_type`: `generalPurpose`
-- `model`: the `how explainer` line, default `claude-opus-5-5-xhigh`
-- `readonly`: `true`
+- `agent`: `how-explainer`
+- `name`: a unique handle such as `how-synthesizer`
+- `task`: the complete prompt from `references/explainer-prompt.md` with every explorer's findings filled in
 
-Build its prompt from `references/explainer-prompt.md` with every explorer's findings filled in.
+End the current turn and continue only after its result is delivered automatically. Do not reuse a prior run's name unless you intentionally want `subagent_message` to resume that subagent's existing session.
 
 ## Step 4. Present
 
