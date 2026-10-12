@@ -19,6 +19,10 @@ Some ideas and extension patterns were inspired by [amosblomqvist/pi-config](htt
 - `skills/herdr/` — instructions for controlling [Herdr](https://github.com/ricardohsd/herdr), a terminal multiplexer for coding agents, when the user explicitly asks to use Herdr.
 - `skills/how/` — explains subsystem architecture and runtime flow using parallel read-only exploration when needed.
 - `skills/why/` — investigates design rationale across source history and available MCP evidence, then produces a confidence-calibrated synthesis.
+- `skills/changelog/` — writes concise changelog entries from approved changes and documentation.
+- `skills/review/` — checks technical documentation against source evidence with an explicit pass or fail verdict.
+- `skills/reflect/` — reviews the active Pi session through three parallel lenses and proposes durable skill improvements.
+- `skills/technical-writing/` — applies practical structure, style, and clarity rules to technical prose.
 - `skills/radioactive/` — a full-cycle 10-phase development lifecycle workflow with discovery, planning, execution, testing, review, fix loops, blueprint updates, and changelog generation. Inspired by [devton/agentic-workflow-blueprint](https://github.com/devton/agentic-workflow-blueprint).
 - `skills/mattpocock/wayfinder/` — a strategic orientation workflow for codebase mapping, architectural entry point identification, and problem-space framing before deeper research or implementation.
 
@@ -26,10 +30,11 @@ See [`skills/README.md`](skills/README.md) for the complete list and origins.
 
 ### Subagent profiles
 
-The profiles in `agents/` support the `how` and `why` skills through [pi-interactive-subagents](https://github.com/ricardohsd/pi-interactive-subagents):
+The profiles in `agents/` support the `how`, `why`, and `reflect` skills through [pi-interactive-subagents](https://github.com/ricardohsd/pi-interactive-subagents):
 
 - `how-explorer` and `how-explainer` — read-only code exploration and architectural synthesis.
 - `why-investigator` and `why-synthesizer` — read-only-oriented evidence gathering and rationale synthesis with Pi MCP access.
+- `reflect-reviewer` and `reflect-synthesizer` — read-only session analysis and durable-learning synthesis.
 
 ## Copy an extension
 
@@ -67,7 +72,7 @@ Replace `/path/to/pi-config-repo/skills` with the path to this repo's `skills` d
 
 ## Link subagent profiles
 
-The `how` and `why` skills require the profiles in `agents/` and the [pi-interactive-subagents](https://github.com/ricardohsd/pi-interactive-subagents) package. Symlink the profiles into your global agent directory:
+The `how`, `why`, and `reflect` skills require the matching profiles in `agents/` and the [pi-interactive-subagents](https://github.com/ricardohsd/pi-interactive-subagents) package. Symlink the profiles into your global agent directory:
 
 ```bash
 mkdir -p ~/.pi/agent/agents
